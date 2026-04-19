@@ -1,52 +1,78 @@
-#!/usr/bin/env python3
-from cryptography.fernet import Fernet
-import bcrypt
+
+---
+
+# 📁 2. password_manager.py (PASTE THIS)
+
+```python id="pmr6"
 import json
-from datetime import datetime
+import hashlib
+import os
 
-class SecurePasswordManager:
-    def __init__(self):
-        self.key = Fernet.generate_key()
-        self.cipher = Fernet(self.key)
-        self.credentials = {}
-    
-    def hash_password(self, password):
-        return bcrypt.hashpw(password.encode(), bcrypt.gensalt())
-    
-    def encrypt_credential(self, username, password):
-        encrypted = self.cipher.encrypt(password.encode())
-        self.credentials[username] = {
-            'password': encrypted.decode(),
-            'created': datetime.now().isoformat()
-        }
-        return True
-    
-    def decrypt_credential(self, username):
-        if username in self.credentials:
-            encrypted = self.credentials[username]['password']
-            decrypted = self.cipher.decrypt(encrypted.encode()).decode()
-            return decrypted
-        return None
-    
-    def check_strength(self, password):
-        score = 0
-        if len(password) >= 8: score += 1
-        if any(c.isupper() for c in password): score += 1
-        if any(c.islower() for c in password): score += 1
-        if any(c.isdigit() for c in password): score += 1
-        if any(c in '!@#$%^&*' for c in password): score += 1
-        
-        strength = {0: 'Weak', 1: 'Fair', 2: 'Good', 3: 'Strong', 4: 'Very Strong', 5: 'Military Grade'}
-        return strength.get(score, 'Unknown')
-    
-    def save_credentials(self, filename='creds.json'):
-        with open(filename, 'w') as f:
-            json.dump(self.credentials, f, indent=4)
+DATA_FILE = "data.json"
 
-if __name__ == '__main__':
-    pm = SecurePasswordManager()
-    pm.encrypt_credential('gmail', 'MySecure123!@#')
-    pm.encrypt_credential('github', 'GitHub456$%^')
-    print("Strength:", pm.check_strength('MySecure123!@#'))
-    pm.save_credentials()
-    print("[+] Credentials saved securely")
+def hash_password(password):
+    return hashlib.sha256(password.encode()).hexdigest()
+
+
+def load_data():
+    if not os.path.exists(DATA_FILE):
+        return {}
+    with open(DATA_FILE, "r") as file:
+        return json.load(file)
+
+
+def save_data(data):
+    with open(DATA_FILE, "w") as file:
+        json.dump(data, file, indent=4)
+
+
+def add_password():
+    site = input("Enter website/app name: ")
+    username = input("Enter username: ")
+    password = input("Enter password: ")
+
+    data = load_data()
+
+    data[site] = {
+        "username": username,
+        "password": hash_password(password)
+    }
+
+    save_data(data)
+    print("[✓] Password saved securely")
+
+
+def view_passwords():
+    data = load_data()
+
+    if not data:
+        print("[!] No saved passwords found")
+        return
+
+    for site, info in data.items():
+        print(f"\nSite: {site}")
+        print(f"Username: {info['username']}")
+        print(f"Password (hashed): {info['password']}")
+
+
+def main():
+    while True:
+        print("\n🔐 Password Manager")
+        print("1. Add Password")
+        print("2. View Passwords")
+        print("3. Exit")
+
+        choice = input("Enter choice: ")
+
+        if choice == "1":
+            add_password()
+        elif choice == "2":
+            view_passwords()
+        elif choice == "3":
+            break
+        else:
+            print("[!] Invalid choice")
+
+
+if __name__ == "__main__":
+    main()
